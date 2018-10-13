@@ -1,0 +1,7 @@
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\bin\Debug\LibUtility.dll
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\bin\Debug\LibUtility.pdb
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\obj\Debug\LibUtility.csproj.CoreCompileInputs.cache
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\obj\Debug\LibUtility.dll
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\obj\Debug\LibUtility.pdb
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\obj\Debug\LibUtility.ZoomPanROIPictureBox.resources
+C:\Users\kchang\Desktop\Code\C_Sharp\WinForm\Lib_CSharp_WinForm\LibUtility\obj\Debug\LibUtility.csproj.GenerateResource.cache
