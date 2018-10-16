@@ -68,8 +68,57 @@ namespace LibUtility
             f_ComboBox.Items.Clear();
             f_ComboBox.Items.AddRange(f_Items);
             f_ComboBox.SelectedIndex = 0;
+            
+        }
+        public struct TempleteMatchingBestOrder
+        {
+            //public int s_Index;
+            public Point s_Location;
+            public double s_Score;
+        };
+        static public List<TempleteMatchingBestOrder> DoTempleteMatching(Emgu.CV.Image<Emgu.CV.Structure.Gray, Byte> f_Srouce,
+                                                                                        Emgu.CV.Image<Emgu.CV.Structure.Gray, Byte> f_Templete,
+                                                                                        Emgu.CV.CvEnum.TemplateMatchingType f_TempleteMatchingType,
+                                                                                        float f_Threadhold,
+                                                                                        int f_GetNumberOfBest)
+        {
+            List<TempleteMatchingBestOrder> t_SortScore = new List<TempleteMatchingBestOrder>();
+            t_SortScore.Clear();
+            Emgu.CV.Image<Emgu.CV.Structure.Gray, float> t_Result;
+            using (t_Result = f_Srouce.MatchTemplate(f_Templete, f_TempleteMatchingType))
+            {
+                double[] t_MinValues, t_maxValues;
+                Point[] t_MinLocations, t_MaxLocations;
+                t_Result.MinMax(out t_MinValues, out t_maxValues, out t_MinLocations, out t_MaxLocations);
+                TempleteMatchingBestOrder t_Temp;
+                //t_Temp.s_Index = 0;
+                t_Temp.s_Location = t_MaxLocations[0];
+                t_Temp.s_Score = t_maxValues[0];
+                t_SortScore.Add(t_Temp);
+                for (int i = 0; i < t_Result.Rows; i++)
+                {
+                    for (int j = 0; j < t_Result.Cols; j++)
+                    {
+                        float t_Value = t_Result.Data[i, j, 0];
+                        if (t_Value >= f_Threadhold)
+                        {
+                            t_Temp.s_Location = new Point(i, j);
+                            t_Temp.s_Score = t_Value;
+                            t_SortScore.Add(t_Temp);
+                        }
+                    }
+                }
+            }
+            if (t_SortScore.Count > f_GetNumberOfBest)
+            {
+                return t_SortScore.OrderByDescending(o => o.s_Score).ToList().GetRange(0, 10);
+            }
+            else
+            {
+                return t_SortScore.OrderByDescending(o => o.s_Score).ToList().GetRange(0, t_SortScore.Count);
+            }
+
         }
 
-        
     }
 }
