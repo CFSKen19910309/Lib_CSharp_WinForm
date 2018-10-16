@@ -76,25 +76,24 @@ namespace LibUtility
             public Point s_Location;
             public double s_Score;
         };
-        static public List<TempleteMatchingBestOrder> DoTempleteMatching(Emgu.CV.Image<Emgu.CV.Structure.Gray, Byte> f_Srouce,
-                                                                                        Emgu.CV.Image<Emgu.CV.Structure.Gray, Byte> f_Templete,
-                                                                                        Emgu.CV.CvEnum.TemplateMatchingType f_TempleteMatchingType,
-                                                                                        float f_Threadhold,
-                                                                                        int f_GetNumberOfBest)
+        static public List<TempleteMatchingBestOrder> DoTempleteMatching(Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> f_Source,
+                                                                                        Emgu.CV.Image<Emgu.CV.Structure.Bgr, byte> f_Templete,
+                                                                                        Emgu.CV.CvEnum.TemplateMatchingType f_TempleteMatchingType = Emgu.CV.CvEnum.TemplateMatchingType.CcoeffNormed,
+                                                                                        float f_Threadhold = 0.9F,
+                                                                                        int f_GetNumberOfBest = 10,
+                                                                                        bool f_IsUsePyramid = false,
+                                                                                        int f_PyramidLevel = 1)
         {
             List<TempleteMatchingBestOrder> t_SortScore = new List<TempleteMatchingBestOrder>();
             t_SortScore.Clear();
             Emgu.CV.Image<Emgu.CV.Structure.Gray, float> t_Result;
-            using (t_Result = f_Srouce.MatchTemplate(f_Templete, f_TempleteMatchingType))
+            if (f_IsUsePyramid == false)
             {
+                t_Result = f_Source.Convert<Emgu.CV.Structure.Gray, byte>().MatchTemplate(f_Templete.Convert<Emgu.CV.Structure.Gray, byte>(), f_TempleteMatchingType);
                 double[] t_MinValues, t_maxValues;
                 Point[] t_MinLocations, t_MaxLocations;
                 t_Result.MinMax(out t_MinValues, out t_maxValues, out t_MinLocations, out t_MaxLocations);
                 TempleteMatchingBestOrder t_Temp;
-                //t_Temp.s_Index = 0;
-                t_Temp.s_Location = t_MaxLocations[0];
-                t_Temp.s_Score = t_maxValues[0];
-                t_SortScore.Add(t_Temp);
                 for (int i = 0; i < t_Result.Rows; i++)
                 {
                     for (int j = 0; j < t_Result.Cols; j++)
@@ -102,16 +101,63 @@ namespace LibUtility
                         float t_Value = t_Result.Data[i, j, 0];
                         if (t_Value >= f_Threadhold)
                         {
-                            t_Temp.s_Location = new Point(i, j);
+                            t_Temp.s_Location = new Point(j, i);
                             t_Temp.s_Score = t_Value;
                             t_SortScore.Add(t_Temp);
                         }
                     }
                 }
             }
+            else
+            {
+                Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>[] t_PyramidSource = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>[f_PyramidLevel];
+                Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>[] t_PyramidTemplete = new Emgu.CV.Image<Emgu.CV.Structure.Gray, byte>[f_PyramidLevel];
+                t_PyramidSource[0] = f_Source.Convert<Emgu.CV.Structure.Gray, byte>().Clone();
+                t_PyramidTemplete[0] = f_Templete.Convert<Emgu.CV.Structure.Gray, byte>().Clone();
+                int[] t_Level = new int[f_PyramidLevel];
+                t_Level[0] = 1;
+                for (int i = 1; i < f_PyramidLevel; i++)
+                {
+                    t_Level[i] = t_Level[i - 1] * 2;
+                    t_PyramidSource[i] = t_PyramidSource[i-1].PyrDown().Clone();
+                    t_PyramidTemplete[i] = t_PyramidTemplete[i-1].PyrDown().Clone();
+                }
+                for(int i = f_PyramidLevel-1; i >= 0; i--)
+                {
+                    for (int j = f_PyramidLevel-1;  j >= 0; j--)
+                    {
+                        if(t_PyramidTemplete[j].Width > t_PyramidSource[i].Width || t_PyramidTemplete[j].Height > t_PyramidSource[i].Height)
+                        {
+                            continue;
+                        }
+                        t_Result = t_PyramidSource[i].MatchTemplate(t_PyramidTemplete[j], f_TempleteMatchingType);
+                        double[] t_MinValues, t_maxValues;
+                        Point[] t_MinLocations, t_MaxLocations;
+                        t_Result.MinMax(out t_MinValues, out t_maxValues, out t_MinLocations, out t_MaxLocations);
+                        if((float)(t_maxValues[0]) <= f_Threadhold)
+                        {
+                            continue;
+                        }
+                        TempleteMatchingBestOrder t_Temp;
+                        for (int x = 0; x < t_Result.Rows; x++)
+                        {
+                            for (int y = 0; y < t_Result.Cols; y++)
+                            {
+                                float t_Value = t_Result.Data[x, y, 0];
+                                if (t_Value >= f_Threadhold)
+                                {
+                                    t_Temp.s_Location = new Point(y * t_Level[i], x * t_Level[i]);
+                                    t_Temp.s_Score = t_Value;
+                                    t_SortScore.Add(t_Temp);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             if (t_SortScore.Count > f_GetNumberOfBest)
             {
-                return t_SortScore.OrderByDescending(o => o.s_Score).ToList().GetRange(0, 10);
+                return t_SortScore.OrderByDescending(o => o.s_Score).ToList().GetRange(0, f_GetNumberOfBest);
             }
             else
             {
@@ -119,6 +165,24 @@ namespace LibUtility
             }
 
         }
-
+        public static Bitmap GetImageFromURL()
+        {
+            Bitmap t_Bitmap = null;
+            try
+            {
+                string t_URL = string.Format(@"http://localhost:21173/getScreen?label={0}", "1");
+                System.Net.WebClient t_WebClient = new System.Net.WebClient();
+                byte[] data = t_WebClient.DownloadData(t_URL);
+                using (var t_MemoryStream = new System.IO.MemoryStream(data))
+                {
+                    return new Bitmap(t_MemoryStream);
+                }
+            }
+            catch(Exception ex)
+            {
+                
+            }
+            return t_Bitmap;
+        }
     }
 }

@@ -18,14 +18,13 @@ namespace LibUtility
             InitializeComponent();
             this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
             m_ListROI.Clear();
-
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
         }
-
+      
         public enum e_MouseMode
         {
             MOUSE_ZOOM_PAN,
@@ -66,7 +65,11 @@ namespace LibUtility
             m_ListROI.Add(f_ROI);
             this.Refresh();
         }
-
+        public void ClearROI()
+        {
+            m_ListROI.Clear();
+            this.Refresh();
+        }
         //********************
         //MouseDownEvent
         //********************
@@ -153,14 +156,13 @@ namespace LibUtility
                 case e_MouseMode.Mouse_DRAWROI:
                     m_ListROI.Add(m_ROI);
                     this.Refresh();
+                    m_ROI = Rectangle.Empty;
                     break;
                 case e_MouseMode.MOUSE_ZOOM_PAN:
                     break;
                 default:
                     break;
             }
-
-                
             m_MouseMode = e_MouseMode.MOUSE_ZOOM_PAN;
 
 
@@ -211,17 +213,17 @@ namespace LibUtility
             //(Why) There are something Event triggered.
             //Graphics t_Graphic = this.CreateGraphics();
             t_Graphic.Clear(Color.White);
-            if (m_IsZoom == false)
-            {
-                m_ImageZoomRate = (float)ZoomImageFit(this.Size, this.Image.Size);
-            }
-            if (m_IsPan == false)
-            {
-                m_ImagePanPos = MoveImageToCenter(this.Size, this.Image.Size, m_ImageZoomRate);
-            }
 
             if (this.Image != null)
             {
+                if (m_IsZoom == false)
+                {
+                    m_ImageZoomRate = (float)ZoomImageFit(this.Size, this.Image.Size);
+                }
+                if (m_IsPan == false)
+                {
+                    m_ImagePanPos = MoveImageToCenter(this.Size, this.Image.Size, m_ImageZoomRate);
+                }
                 t_Graphic.ScaleTransform(m_ImageZoomRate, m_ImageZoomRate);
                 t_Graphic.DrawImage(this.Image, m_ImagePanPos.X, m_ImagePanPos.Y);
                 if(m_IsMousePressed == true)
@@ -232,7 +234,6 @@ namespace LibUtility
                 {
                     t_Graphic.DrawRectangle(new Pen(Color.Blue, 2), m_ListROI[i].X + m_ImagePanPos.X, m_ListROI[i].Y + m_ImagePanPos.Y, m_ListROI[i].Width, m_ListROI[i].Height);
                 }
-                
             }
         }
 
@@ -269,8 +270,10 @@ namespace LibUtility
             t_CenterPoint.Y = (int)(t_CenterPoint.Y / ZoomValue);
             return t_CenterPoint;
         }
-        
 
-        
+        private void ZoomPanROIPictureBox_Resize(object sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
     }
 }
