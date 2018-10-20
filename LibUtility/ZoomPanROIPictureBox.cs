@@ -12,14 +12,108 @@ namespace LibUtility
 {
     public partial class ZoomPanROIPictureBox : PictureBox
     {
-
+        private ContextMenuStrip fruitContextMenuStrip;
         public ZoomPanROIPictureBox()
         {
             InitializeComponent();
             this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
             m_ListROI.Clear();
         }
+        public enum E_LeftMouseButtonMode
+        {
+            e_MoveImage,
+            e_AddROI,
+            e_SelectROI,
+            e_ModifyROI,
+            e_DeleteROI
+        };
+        int m_LeftButtonMode;
+        private struct S_ROI
+        {
+            bool s_IsSelected;
+            bool s_IsMaskToNone;
+            Pen s_PenColor;
+            Brush s_BrushType;
+            Rectangle s_ROIRectangle;
+        };
 
+        private void CreateContextMenuStrip()
+        {
+            m_ContextMenuStrip.Items.Clear();
+            
+            m_ContextMenuStrip.Items.Add("Fit Image To PictureBox");
+            m_ContextMenuStrip.Items[0].Click += new EventHandler(FitImageToCenter);
+            m_ContextMenuStrip.Items.Add("-");
+
+            m_ContextMenuStrip.Items.Add("Move Image");
+            m_ContextMenuStrip.Items[2].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items.Add("Add ROI");
+            m_ContextMenuStrip.Items[3].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items.Add("Select ROI");
+            m_ContextMenuStrip.Items[4].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items.Add("Modify ROI");
+            m_ContextMenuStrip.Items[5].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items.Add("Delete ROI");
+            m_ContextMenuStrip.Items[6].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items.Add("-");
+            switch(m_LeftButtonMode)
+            {
+                case (int)E_LeftMouseButtonMode.e_MoveImage:
+                    {
+                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[2]).Checked = true;
+                        break;
+                    }
+                case (int)E_LeftMouseButtonMode.e_AddROI:
+                    {
+                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[3]).Checked = true;
+                        break;
+                    }
+                case (int)E_LeftMouseButtonMode.e_SelectROI:
+                    {
+                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[4]).Checked = true;
+                        break;
+                    }
+                case (int)E_LeftMouseButtonMode.e_ModifyROI:
+                    {
+                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[5]).Checked = true;
+                        break;
+                    }
+                case (int)E_LeftMouseButtonMode.e_DeleteROI:
+                    {
+                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[6]).Checked = true;
+                        break;
+                    }
+
+            }
+            m_ContextMenuStrip.Show(MousePosition);
+            
+        }
+        private void CheckROIOperator(object sender, EventArgs e)
+        {
+            //Pointer to Child
+            ToolStripMenuItem t_ToolStripMenuItem = sender as ToolStripMenuItem;
+            if (t_ToolStripMenuItem.Text == "Add ROI")
+            {
+                t_ToolStripMenuItem.Checked = true;
+                m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_AddROI;
+            }
+            if (t_ToolStripMenuItem.Text == "Select ROI")
+            {
+                t_ToolStripMenuItem.Checked = true;
+                m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_SelectROI;
+            }
+            if (t_ToolStripMenuItem.Text == "Modify ROI")
+            {
+                t_ToolStripMenuItem.Checked = true;
+                m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_ModifyROI;
+            }
+            if (t_ToolStripMenuItem.Text == "Delete ROI")
+            {
+                t_ToolStripMenuItem.Checked = true;
+                m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_DeleteROI;
+            }
+        }
+        ContextMenuStrip m_ContextMenuStrip = new ContextMenuStrip();
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -75,6 +169,11 @@ namespace LibUtility
         //********************
         private void ZoomPanROIPictureBox_MouseDown(object sender, MouseEventArgs e)
         {
+            if(e.Button == MouseButtons.Right)
+            {
+                CreateContextMenuStrip();
+                
+            }
             if (ModifierKeys == Keys.Control)
             {
                 m_MouseMode = e_MouseMode.Mouse_DRAWROI;
@@ -99,6 +198,10 @@ namespace LibUtility
         //********************
         private void ZoomPanROIPictureBox_MouseMove(object sender, MouseEventArgs e)
         {
+            if(m_IsMousePressed == false)
+            {
+                return;
+            }
             switch (m_MouseMode)
             {
                 case e_MouseMode.Mouse_DRAWROI:
@@ -226,7 +329,7 @@ namespace LibUtility
                 }
                 t_Graphic.ScaleTransform(m_ImageZoomRate, m_ImageZoomRate);
                 t_Graphic.DrawImage(this.Image, m_ImagePanPos.X, m_ImagePanPos.Y);
-                if(m_IsMousePressed == true)
+                if (m_IsMousePressed == true)
                 {
                     t_Graphic.DrawRectangle(new Pen(Color.Blue, 2), m_ROI.X + m_ImagePanPos.X, m_ROI.Y + m_ImagePanPos.Y, m_ROI.Width, m_ROI.Height);
                 }
@@ -237,10 +340,12 @@ namespace LibUtility
             }
         }
 
-        public void FitImageToCenter()
+        public void  FitImageToCenter(object o = null, EventArgs e = null)
         {
             m_ImageZoomRate = (float)ZoomImageFit(this.Size, this.Image.Size);
+            
             m_ImagePanPos = MoveImageToCenter(this.Size, this.Image.Size, m_ImageZoomRate);
+            this.Refresh();
         }
 
         public double ZoomImageFit(Size f_PictureBoxSize, Size f_ImageSize)
