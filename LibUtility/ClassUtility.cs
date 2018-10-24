@@ -247,13 +247,15 @@ namespace LibUtility
         }
         public static void TesseractDownloadLangFile(String f_Folder, List<String> f_Lang)
         {
-            if(!System.IO.Directory.Exists(f_Folder))
+            String t_Folder = String.Format("{0}{1}", f_Folder, "tessdata");
+            
+            if(!System.IO.Directory.Exists(t_Folder))
             {
-                System.IO.Directory.CreateDirectory(f_Folder);
+                System.IO.Directory.CreateDirectory(t_Folder);
             }
             foreach (String t_Lang in f_Lang)
             {
-                String t_Destination = System.IO.Path.Combine(f_Folder, String.Format("{0}.traineddata", t_Lang));
+                String t_Destination = System.IO.Path.Combine(t_Folder, String.Format("{0}.traineddata", t_Lang));
                 if(!System.IO.File.Exists(t_Destination))
                 {
                     using (System.Net.WebClient t_WebClient = new System.Net.WebClient())
@@ -266,15 +268,40 @@ namespace LibUtility
                 }
             }
         }
-
-        //~<eng>+~<jpn>
+        //highlight : This is a Rule to define the Directory format
+        //Format the Directory String with end of directory separactor or relately directory with begin of dot
+        public static String CheckDirectoyFormat(String f_DirectoryString)
+        {
+            String t_DirectoryString = f_DirectoryString;
+            if (t_DirectoryString.Length == 0)
+            {
+                t_DirectoryString = String.Format("{0}", '.');
+            }
+            //highlight System.IO.Path.DirectorySeparatorChar is a char, it is not a string.
+            //if we want to comapre between String and Char, we wiil get a trouble.
+            if (t_DirectoryString.Substring(t_DirectoryString.Length - 1, 1).Equals(System.IO.Path.DirectorySeparatorChar.ToString()) == false)
+            {
+                t_DirectoryString = String.Format("{0}{1}", t_DirectoryString, System.IO.Path.DirectorySeparatorChar);
+            }
+            return t_DirectoryString;
+        }
         public static void InitialOCR(ref Emgu.CV.OCR.Tesseract f_OCR, String f_Folder, String f_Lang, Emgu.CV.OCR.OcrEngineMode f_OcrEngineMode = Emgu.CV.OCR.OcrEngineMode.TesseractLstmCombined)
         {
             try
             {
-                List<String> t_DownloadLangFile = new List<String>();
+                //check OCR is if it is clear
+                if (f_OCR != null)
+                {
+                    f_OCR.Dispose();
+                    f_OCR = null;
+                }
+                //check Directory format is correct
+                String t_Folder;
+                t_Folder = CheckDirectoyFormat(f_Folder);
 
-                if (f_Lang.Length <=0)
+                //extract the language item
+                List<String> t_DownloadLangFile = new List<String>();
+                if (f_Lang.Length == 0)
                 {
                     f_Lang = String.Format("{0}", "eng");
                     t_DownloadLangFile.Add("eng");
@@ -285,32 +312,9 @@ namespace LibUtility
                     t_LangSplit = (String[])f_Lang.Split('+');
                     t_DownloadLangFile.AddRange(t_LangSplit);
                 }
+                TesseractDownloadLangFile(t_Folder, t_DownloadLangFile);
 
-                if (f_OCR != null)
-                {
-                    f_OCR.Dispose();
-                    f_OCR = null;
-                }
-                if(String.IsNullOrEmpty(f_Folder))
-                {
-                    f_Folder = ".";
-                }
-
-                //t_DownloadLangFile.AddRange(t_LangSplit);
-                TesseractDownloadLangFile(f_Folder, t_DownloadLangFile);
-
-                String t_PathFinal;
-                if (f_Folder.Length == 0 || f_Folder.Substring(f_Folder.Length - 1, 1).Equals(System.IO.Path.DirectorySeparatorChar.ToString()))
-                {
-                    t_PathFinal = f_Folder;
-                }
-                else
-                {
-                    t_PathFinal = String.Format("{0}{1}", f_Folder, System.IO.Path.DirectorySeparatorChar);
-                }
-
-                f_OCR = new Emgu.CV.OCR.Tesseract(t_PathFinal, f_Lang, f_OcrEngineMode);
-                f_OCR = new Emgu.CV.OCR.Tesseract(t_PathFinal, "eng+jpn", f_OcrEngineMode);
+                f_OCR = new Emgu.CV.OCR.Tesseract(t_Folder, f_Lang, f_OcrEngineMode);
             }
             catch (Exception e)
             {

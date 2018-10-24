@@ -28,7 +28,7 @@ namespace LibUtility
         public ZoomPanROIPictureBox()
         {
             InitializeComponent();
-            //this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
+            this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
             
             m_ManagerROI.m_ListAllROI.Clear();
             m_ManagerROI.m_ListCurrentSelectROI.Clear();
@@ -43,7 +43,7 @@ namespace LibUtility
         {
             m_ContextMenuStrip.Items.Clear();
             m_ContextMenuStrip.Items.Add("Fit Image To PictureBox");
-           // m_ContextMenuStrip.Items[0].Click += new EventHandler(FitImageToCenter);
+            m_ContextMenuStrip.Items[0].Click += new EventHandler(FitImageToCenter);
             m_ContextMenuStrip.Items.Add("-");
             m_ContextMenuStrip.Items.Add("Move Image");
             m_ContextMenuStrip.Items[2].Click += new EventHandler(ClickROIMode);
