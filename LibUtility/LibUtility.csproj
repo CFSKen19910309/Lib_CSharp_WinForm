@@ -58,6 +58,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClassROI.cs" />
     <Compile Include="ClassUtility.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ZoomPanROIPictureBox.cs">

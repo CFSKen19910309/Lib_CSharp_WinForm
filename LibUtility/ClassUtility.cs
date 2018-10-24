@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
 namespace LibUtility
 {
     public class ClassUtility
     {
+        
         static public String SaveAndOpenFileFilter =    "bmp file (*.bmp)|*.bmp|" +
                                                         "jpeg file (*.jpeg)|*.jpeg|" +
                                                         "jpg file (*.jpg)|*.jpg|" +
@@ -184,5 +187,137 @@ namespace LibUtility
             }
             return t_Bitmap;
         }
+
+        public enum E_ImageColor
+        {
+            e_Color,
+            e_R,
+            e_G,
+            e_B,
+            e_Gray
+        }
+        public static Emgu.CV.Mat  ConvertImageColor(Emgu.CV.Mat f_Image, int ConvertTo)
+        {
+            Emgu.CV.Mat t_ResultImage = new Emgu.CV.Mat();
+            t_ResultImage = f_Image;
+            if (f_Image.NumberOfChannels < 3)
+            {
+                return t_ResultImage;
+            }
+            switch (ConvertTo)
+            {
+                case (int)E_ImageColor.e_Color:
+                    {
+                        t_ResultImage = f_Image;
+                        break;
+                    }
+                case (int)E_ImageColor.e_R:
+                    {
+                        Emgu.CV.Mat[] t_ImageSplit = f_Image.Split();
+                        t_ResultImage = t_ImageSplit[2];
+                        break;
+                    }
+                case (int)E_ImageColor.e_G:
+                    {
+                        Emgu.CV.Mat[] t_ImageSplit = f_Image.Split();
+                        t_ResultImage = t_ImageSplit[1];
+                        break;
+                    }
+                case (int)E_ImageColor.e_B:
+                    {
+                        Emgu.CV.Mat[] t_ImageSplit = f_Image.Split();
+                        t_ResultImage = t_ImageSplit[0];
+                        break;
+                    }
+                case (int)E_ImageColor.e_Gray:
+                    {
+                        f_Image.ConvertTo(t_ResultImage, Emgu.CV.CvEnum.DepthType.Cv8U);
+                        break;
+                    }
+                default:
+                    {
+                        t_ResultImage = f_Image;
+                        break;
+                    }
+            }
+            return t_ResultImage;
+
+
+
+        }
+        public static void TesseractDownloadLangFile(String f_Folder, List<String> f_Lang)
+        {
+            if(!System.IO.Directory.Exists(f_Folder))
+            {
+                System.IO.Directory.CreateDirectory(f_Folder);
+            }
+            foreach (String t_Lang in f_Lang)
+            {
+                String t_Destination = System.IO.Path.Combine(f_Folder, String.Format("{0}.traineddata", t_Lang));
+                if(!System.IO.File.Exists(t_Destination))
+                {
+                    using (System.Net.WebClient t_WebClient = new System.Net.WebClient())
+                    {
+                        String t_Source = String.Format("https://github.com/tesseract-ocr/tessdata/blob/4592b8d453889181e01982d22328b5846765eaad/{0}.traineddata?raw=true", t_Lang);
+                        Console.WriteLine(String.Format("Downloading file from '{0}' to '{1}'", t_Source, t_Destination));
+                        t_WebClient.DownloadFile(t_Source, t_Destination);
+                        Console.WriteLine(String.Format("Download {0} Finished", t_Lang));
+                    }
+                }
+            }
+        }
+
+        //~<eng>+~<jpn>
+        public static void InitialOCR(ref Emgu.CV.OCR.Tesseract f_OCR, String f_Folder, String f_Lang, Emgu.CV.OCR.OcrEngineMode f_OcrEngineMode = Emgu.CV.OCR.OcrEngineMode.TesseractLstmCombined)
+        {
+            try
+            {
+                List<String> t_DownloadLangFile = new List<String>();
+
+                if (f_Lang.Length <=0)
+                {
+                    f_Lang = String.Format("{0}", "eng");
+                    t_DownloadLangFile.Add("eng");
+                }
+                else
+                {
+                    String[] t_LangSplit;
+                    t_LangSplit = (String[])f_Lang.Split('+');
+                    t_DownloadLangFile.AddRange(t_LangSplit);
+                }
+
+                if (f_OCR != null)
+                {
+                    f_OCR.Dispose();
+                    f_OCR = null;
+                }
+                if(String.IsNullOrEmpty(f_Folder))
+                {
+                    f_Folder = ".";
+                }
+
+                //t_DownloadLangFile.AddRange(t_LangSplit);
+                TesseractDownloadLangFile(f_Folder, t_DownloadLangFile);
+
+                String t_PathFinal;
+                if (f_Folder.Length == 0 || f_Folder.Substring(f_Folder.Length - 1, 1).Equals(System.IO.Path.DirectorySeparatorChar.ToString()))
+                {
+                    t_PathFinal = f_Folder;
+                }
+                else
+                {
+                    t_PathFinal = String.Format("{0}{1}", f_Folder, System.IO.Path.DirectorySeparatorChar);
+                }
+
+                f_OCR = new Emgu.CV.OCR.Tesseract(t_PathFinal, f_Lang, f_OcrEngineMode);
+                f_OCR = new Emgu.CV.OCR.Tesseract(t_PathFinal, "eng+jpn", f_OcrEngineMode);
+            }
+            catch (Exception e)
+            {
+                f_OCR = null;
+                MessageBox.Show(e.Message, "Failed to initialize tesseract OCR engine", MessageBoxButtons.OK);
+            }
+        }
+        
     }
 }

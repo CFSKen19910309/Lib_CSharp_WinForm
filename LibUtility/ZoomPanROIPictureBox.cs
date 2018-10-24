@@ -8,53 +8,53 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
+
+
 namespace LibUtility
 {
+    public enum E_LeftMouseButtonMode
+    {
+        e_MoveImage,
+        e_AddROI,
+        e_SelectROI,
+        e_ModifyROI,
+        e_DeleteROI
+    };
+
     public partial class ZoomPanROIPictureBox : PictureBox
     {
-        private ContextMenuStrip fruitContextMenuStrip;
+        //Initaial ZoomPanROIPictureBox;
+
         public ZoomPanROIPictureBox()
         {
             InitializeComponent();
-            this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
-            m_ListROI.Clear();
+            //this.MouseWheel += ZoomPanROIPictureBox_MouseWheel;
+            
+            m_ManagerROI.m_ListAllROI.Clear();
+            m_ManagerROI.m_ListCurrentSelectROI.Clear();
+            m_ManagerROI.m_ListCurrentSelectROIIndex.Clear();
         }
-        public enum E_LeftMouseButtonMode
-        {
-            e_MoveImage,
-            e_AddROI,
-            e_SelectROI,
-            e_ModifyROI,
-            e_DeleteROI
-        };
+        //Left button mode include "Move Image", "Add ROI", "Select ROI", "Modify ROI", "Delete ROI"
         int m_LeftButtonMode;
-        private struct S_ROI
-        {
-            bool s_IsSelected;
-            bool s_IsMaskToNone;
-            Pen s_PenColor;
-            Brush s_BrushType;
-            Rectangle s_ROIRectangle;
-        };
 
+        //Create a context menu strip
+        ContextMenuStrip m_ContextMenuStrip = new ContextMenuStrip();
         private void CreateContextMenuStrip()
         {
             m_ContextMenuStrip.Items.Clear();
-            
             m_ContextMenuStrip.Items.Add("Fit Image To PictureBox");
-            m_ContextMenuStrip.Items[0].Click += new EventHandler(FitImageToCenter);
+           // m_ContextMenuStrip.Items[0].Click += new EventHandler(FitImageToCenter);
             m_ContextMenuStrip.Items.Add("-");
-
             m_ContextMenuStrip.Items.Add("Move Image");
-            m_ContextMenuStrip.Items[2].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items[2].Click += new EventHandler(ClickROIMode);
             m_ContextMenuStrip.Items.Add("Add ROI");
-            m_ContextMenuStrip.Items[3].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items[3].Click += new EventHandler(ClickROIMode);
             m_ContextMenuStrip.Items.Add("Select ROI");
-            m_ContextMenuStrip.Items[4].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items[4].Click += new EventHandler(ClickROIMode);
             m_ContextMenuStrip.Items.Add("Modify ROI");
-            m_ContextMenuStrip.Items[5].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items[5].Click += new EventHandler(ClickROIMode);
             m_ContextMenuStrip.Items.Add("Delete ROI");
-            m_ContextMenuStrip.Items[6].Click += new EventHandler(CheckROIOperator);
+            m_ContextMenuStrip.Items[6].Click += new EventHandler(DeleteSelectedROI);
             m_ContextMenuStrip.Items.Add("-");
             switch(m_LeftButtonMode)
             {
@@ -78,20 +78,18 @@ namespace LibUtility
                         ((ToolStripMenuItem)m_ContextMenuStrip.Items[5]).Checked = true;
                         break;
                     }
-                case (int)E_LeftMouseButtonMode.e_DeleteROI:
-                    {
-                        ((ToolStripMenuItem)m_ContextMenuStrip.Items[6]).Checked = true;
-                        break;
-                    }
-
             }
             m_ContextMenuStrip.Show(MousePosition);
-            
         }
-        private void CheckROIOperator(object sender, EventArgs e)
+        
+        //the event from the ROI mode of context menu
+        private void ClickROIMode(object sender, EventArgs e)
         {
-            //Pointer to Child
             ToolStripMenuItem t_ToolStripMenuItem = sender as ToolStripMenuItem;
+            if(t_ToolStripMenuItem.Text == "Move Image")
+            {
+                m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_MoveImage;
+            }
             if (t_ToolStripMenuItem.Text == "Add ROI")
             {
                 t_ToolStripMenuItem.Checked = true;
@@ -113,25 +111,23 @@ namespace LibUtility
                 m_LeftButtonMode = (int)E_LeftMouseButtonMode.e_DeleteROI;
             }
         }
-        ContextMenuStrip m_ContextMenuStrip = new ContextMenuStrip();
+
+        public void DeleteSelectedROI(object sender, EventArgs e)
+        {
+            m_ManagerROI.DeleteROI();
+            m_ManagerROI.UpdateROI();
+            this.Refresh();
+        }
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
         }
       
-        public enum e_MouseMode
-        {
-            MOUSE_ZOOM_PAN,
-            Mouse_DRAWROI
-        }
-        e_MouseMode m_MouseMode = e_MouseMode.MOUSE_ZOOM_PAN;
-        //e_MouseMode m_MouseOldMode = e_MouseMode.MOUSE_ZOOM_PAN;
-
+        //set the picture box property
         private bool m_IsPan = true;
         private bool m_IsZoom = true;
         private bool m_IsDraw = true;
         private bool m_IsSelect = true;
-
         public void SetPictureBoxProperty(bool f_IsPan = true, bool f_IsZoom = true, bool f_IsDraw = true, bool f_IsSelect = true)
         {
             m_IsPan = f_IsPan;
@@ -139,31 +135,37 @@ namespace LibUtility
             m_IsDraw = f_IsZoom;
             m_IsSelect = f_IsSelect;
         }
-
+        //picture box state
         private float m_ImageZoomRate = 1.0F;   
         private Point m_ImagePanPos = Point.Empty;      //current offset of image
         private Point m_ImageOldPanPos = Point.Empty;   //The offset of image when mouse was processed.
         private Point m_MouseDownPos = Point.Empty;     //
         private bool m_IsMousePressed = false;             //true as long as left mousebutton is processed.
 
-        public List<Rectangle> m_ListROI = new List<Rectangle>();
+        //the data is from ClasssROI
+        public LibUtility.ClassROI m_ManagerROI = new LibUtility.ClassROI();
         public Rectangle m_ROI;
-
-        public List<Rectangle> GetROI()
+        public List<LibUtility.ClassROI.S_ROI> GetSelectedROI()
         {
-            return m_ListROI;
+            m_ManagerROI.m_ListCurrentSelectROI.Clear();
+            for (int i = 0; i < m_ManagerROI.m_ListAllROI.Count; i++)
+            {
+                if(m_ManagerROI.m_ListAllROI[i].s_IsSelected == true)
+                {
+                    m_ManagerROI.m_ListCurrentSelectROI.Add(m_ManagerROI.m_ListAllROI[i]);
+                }
+            }
+            return m_ManagerROI.m_ListCurrentSelectROI;
         }
 
-        public void SetROI(Rectangle f_ROI)
-        {
-            m_ListROI.Add(f_ROI);
-            this.Refresh();
-        }
         public void ClearROI()
         {
-            m_ListROI.Clear();
+            m_ManagerROI.m_ListAllROI.Clear();
+            m_ManagerROI.m_ListCurrentSelectROI.Clear();
+            m_ManagerROI.m_ListCurrentSelectROIIndex.Clear();
             this.Refresh();
         }
+        
         //********************
         //MouseDownEvent
         //********************
@@ -172,24 +174,20 @@ namespace LibUtility
             if(e.Button == MouseButtons.Right)
             {
                 CreateContextMenuStrip();
-                
             }
-            if (ModifierKeys == Keys.Control)
-            {
-                m_MouseMode = e_MouseMode.Mouse_DRAWROI;
-            }
-            else
-            {
-                m_MouseMode = e_MouseMode.MOUSE_ZOOM_PAN;
-            }
-
             if (e.Button == MouseButtons.Left)
             {
-                if (!m_IsMousePressed)
+                if (m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_AddROI ||
+                    m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_ModifyROI ||
+                    m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_MoveImage ||
+                    m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_SelectROI)
                 {
-                    m_IsMousePressed = true;
-                    m_MouseDownPos = e.Location;
-                    m_ImageOldPanPos = m_ImagePanPos;
+                    if (!m_IsMousePressed)
+                    {
+                        m_IsMousePressed = true;
+                        m_MouseDownPos = e.Location;
+                        m_ImageOldPanPos = m_ImagePanPos;
+                    }
                 }
             }
         }
@@ -202,9 +200,9 @@ namespace LibUtility
             {
                 return;
             }
-            switch (m_MouseMode)
+            switch (m_LeftButtonMode)
             {
-                case e_MouseMode.Mouse_DRAWROI:
+                case (int)E_LeftMouseButtonMode.e_AddROI:
                     if (e.Button == MouseButtons.Left)
                     {
                         Point t_MousePosNow = e.Location;
@@ -223,12 +221,11 @@ namespace LibUtility
                         m_ROI.Y = (int)(m_MouseDownPos.Y / m_ImageZoomRate - m_ImagePanPos.Y);
                         m_ROI.Width = (int)(t_DeltaX / m_ImageZoomRate);
                         m_ROI.Height = (int)(t_DeltaY / m_ImageZoomRate);
-
-
+                        
                         this.Refresh();
                     }
                     break;
-                case e_MouseMode.MOUSE_ZOOM_PAN:
+                case (int)E_LeftMouseButtonMode.e_MoveImage:
                     {
                         if (e.Button == MouseButtons.Left)
                         {
@@ -244,6 +241,12 @@ namespace LibUtility
                         }
                         break;
                     }
+                case (int)E_LeftMouseButtonMode.e_ModifyROI:
+                    {
+                        
+                        break;
+                    }
+                    
                 default:
                     break;
             }
@@ -254,22 +257,18 @@ namespace LibUtility
         private void ZoomPanROIPictureBox_MouseUp(object sender, MouseEventArgs e)
         {
             m_IsMousePressed = false;
-            switch (m_MouseMode)
+            if (m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_AddROI)
             {
-                case e_MouseMode.Mouse_DRAWROI:
-                    m_ListROI.Add(m_ROI);
-                    this.Refresh();
-                    m_ROI = Rectangle.Empty;
-                    break;
-                case e_MouseMode.MOUSE_ZOOM_PAN:
-                    break;
-                default:
-                    break;
+                m_ManagerROI.m_ListAllROI.Add(new LibUtility.ClassROI.S_ROI(m_ROI));
             }
-            m_MouseMode = e_MouseMode.MOUSE_ZOOM_PAN;
-
-
-
+            if(m_LeftButtonMode == (int)E_LeftMouseButtonMode.e_SelectROI)
+            {
+                Point t_Point = new Point();
+                t_Point.X = (int)(e.X / m_ImageZoomRate - m_ImagePanPos.X);
+                t_Point.Y = (int)(e.Y / m_ImageZoomRate - m_ImagePanPos.Y);
+                m_ManagerROI.SelectROI(t_Point);
+            }
+            this.Refresh();
         }
 
         //********************
@@ -309,7 +308,7 @@ namespace LibUtility
         }
 
 
-
+        
         private void ZoomPanROIPictureBox_Paint(object sender, PaintEventArgs e)
         {
             Graphics t_Graphic = e.Graphics;
@@ -333,9 +332,11 @@ namespace LibUtility
                 {
                     t_Graphic.DrawRectangle(new Pen(Color.Blue, 2), m_ROI.X + m_ImagePanPos.X, m_ROI.Y + m_ImagePanPos.Y, m_ROI.Width, m_ROI.Height);
                 }
-                for (int i = 0; i < m_ListROI.Count; i ++)
+                for (int i = 0; i < m_ManagerROI.m_ListAllROI.Count; i ++)
                 {
-                    t_Graphic.DrawRectangle(new Pen(Color.Blue, 2), m_ListROI[i].X + m_ImagePanPos.X, m_ListROI[i].Y + m_ImagePanPos.Y, m_ListROI[i].Width, m_ListROI[i].Height);
+                    t_Graphic.DrawRectangle(m_ManagerROI.m_ListAllROI[i].s_Pen,
+                        m_ManagerROI.m_ListAllROI[i].s_Rectangle.X + m_ImagePanPos.X, m_ManagerROI.m_ListAllROI[i].s_Rectangle.Y + m_ImagePanPos.Y,
+                        m_ManagerROI.m_ListAllROI[i].s_Rectangle.Width, m_ManagerROI.m_ListAllROI[i].s_Rectangle.Height);
                 }
             }
         }
@@ -380,5 +381,7 @@ namespace LibUtility
         {
             this.Invalidate();
         }
+        
     }
+    
 }

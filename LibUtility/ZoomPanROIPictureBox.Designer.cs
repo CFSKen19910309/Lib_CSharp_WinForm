@@ -33,11 +33,13 @@
             // 
             // ZoomPanROIPictureBox
             // 
+            
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.ZoomPanROIPictureBox_Paint);
             this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.ZoomPanROIPictureBox_MouseDown);
             this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.ZoomPanROIPictureBox_MouseMove);
             this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.ZoomPanROIPictureBox_MouseUp);
             this.Resize += new System.EventHandler(this.ZoomPanROIPictureBox_Resize);
+            
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
 
