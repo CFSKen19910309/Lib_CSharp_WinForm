@@ -323,5 +323,78 @@ namespace LibUtility
             }
         }
         
+        public struct S_OCR_Result
+        {
+            public List<String> s_LineString ;
+            public List<Rectangle> s_LineRectangle ;
+            public String s_HOCR;
+        }
+        public static S_OCR_Result DoReconizeOCR(ref Emgu.CV.OCR.Tesseract f_OCR, Emgu.CV.Mat f_Mat)
+        {
+            Emgu.CV.Mat t_Mat = new Emgu.CV.Mat();
+            if(f_Mat.NumberOfChannels != 1)
+            {
+                f_Mat.ConvertTo(t_Mat, Emgu.CV.CvEnum.DepthType.Cv8U);
+            }
+            else
+            {
+                t_Mat = f_Mat.Clone();
+            }
+            f_OCR.SetImage(t_Mat);
+            f_OCR.Recognize();
+            S_OCR_Result t_OCR_Result;
+            t_OCR_Result.s_LineRectangle = new List<Rectangle>();
+            t_OCR_Result.s_LineString = new List<string>();
+            t_OCR_Result.s_HOCR = f_OCR.GetHOCRText();
+            String t_GetUTF8Text = f_OCR.GetUTF8Text();
+            String[] t_SpilitUTF8Text = t_GetUTF8Text.Split(System.Environment.NewLine.ToCharArray());
+            for(int i = 0; i < t_SpilitUTF8Text.Length; i++)
+            {
+                t_SpilitUTF8Text[i] = t_SpilitUTF8Text[i].Trim();
+                if (t_SpilitUTF8Text[i].Length > 0)
+                {
+                    t_OCR_Result.s_LineString.Add(t_SpilitUTF8Text[i]);
+                }
+            }
+            Emgu.CV.OCR.Tesseract.Character[] t_Characters = f_OCR.GetCharacters();
+
+            int t_X = 0 , t_Y = 0, t_Width = 0, t_Height = 0;
+            bool t_IsFirstWord = true;
+            string t_Text;
+            Rectangle t_Region;
+            for (int i = 0; i < t_Characters.Length; i++)
+            {
+                Emgu.CV.OCR.Tesseract.Character t_Character = t_Characters[i];
+                t_Text = t_Character.Text;
+                t_Region = t_Character.Region;
+                if (t_Character.Text == " " )
+                {
+                    continue;
+                }
+                //Emgu.CV.OCR.Tesseract.Character t_LastCharacter = t_Characters[i];
+                if (t_IsFirstWord == true)
+                {
+                    t_IsFirstWord = false;
+                    t_X = t_Character.Region.X;
+                    t_Y = t_Character.Region.Y;
+                }
+                if(t_Character.Text == System.Environment.NewLine.ToString())
+                {
+                    t_IsFirstWord = true;
+                    t_X = t_Character.Region.X;
+                    t_Y = t_Character.Region.Y;
+                    t_OCR_Result.s_LineRectangle.Add(new Rectangle(t_X, t_Y, t_Width, t_Height));
+                }
+            }
+
+
+
+
+            return t_OCR_Result;
+
+
+
+        }
+        
     }
 }
